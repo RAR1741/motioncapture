@@ -9,3 +9,4 @@
 - Npm install @react-native-async-storage/async-storage --legacy-peer-deps
 - npm install react-native-fs --legacy-peer-deps
 - npm install @mediapipe/pose --legacy-peer-deps
+- npm install react-native-canvas
