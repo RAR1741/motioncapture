@@ -107,7 +107,7 @@ export default class App extends React.Component {
     return (
       <View style={styles.container}>
         <PoseDetector></PoseDetector>
-        <Text>Michael is a nigger</Text>
+        <Text></Text>
       </View>
     );
   }
