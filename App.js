@@ -1,13 +1,9 @@
 import React, {useRef} from 'react';
 import { StyleSheet, Text, View ,TouchableOpacity,Platform, } from 'react-native';
 import { Camera } from 'expo-camera';
-import * as Permissions from 'expo-permissions';
-import Canvas from 'react-native-canvas';
 import * as tf from '@tensorflow/tfjs';
 import '@tensorflow/tfjs-react-native'
 import * as posenet from "@tensorflow-models/posenet"
-import { drawKeypoints, drawSkeleton } from "./utilities";
-import MyComponent from './tensorCamera';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
 import { Dimensions } from "react-native";
 import Svg, { Circle, Rect, G, Line} from 'react-native-svg';
@@ -66,14 +62,6 @@ export default class App extends React.Component {
         imageTensor, { flipHorizontal });
       this.setState({pose});
       tf.dispose([imageTensor]);
-
-      //
-      // do something with tensor here
-      //
-
-      // if autorender is false you need the following two lines.
-      // updatePreview();
-      // gl.endFrameEXP();
 
       requestAnimationFrame(loop);
     }
