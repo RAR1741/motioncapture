@@ -1,9 +1,9 @@
 #appjs_iterations
-App2.js
-App3.js
-App4.js
-App5.js
-App6.js
+App2.txt
+App3.txt
+App4.txt
+App5.txt
+App6.txt
 LoadingScreen.js
 PoseCamera.js
 UseModel.js
@@ -64,6 +64,3 @@ buck-out/
 web-build/
 dist/
 src/__tests__/App.js
-src/App4.js
-src/App4.js
-src/App4.js
