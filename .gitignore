@@ -1,3 +1,13 @@
+#appjs_iterations
+App2.js
+App3.js
+App4.js
+App5.js
+App6.js
+LoadingScreen.js
+PoseCamera.js
+UseModel.js
+
 # OSX
 #
 .DS_Store
@@ -53,3 +63,7 @@ buck-out/
 .expo/
 web-build/
 dist/
+src/__tests__/App.js
+src/App4.js
+src/App4.js
+src/App4.js

@@ -1,173 +1,279 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, Text, View, Dimensions, Platform } from 'react-native';
 
-//Tensorflow
-import '@tensorflow/tfjs-react-native';
-import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
-import * as poseDetection from '@tensorflow-models/pose-detection';
-import * as tf from '@tensorflow/tfjs-core';
-import '@tensorflow/tfjs-backend-webgl';
-import '@mediapipe/pose';
-
-//Drawing and Rendering Utilities
-// import {draw, drawKeypoint, drawSkeleton} from "./utilities";
-import Canvas from 'react-native-canvas';
-
-//Expo
 import { Camera } from 'expo-camera';
-import { GLView } from 'expo-gl';
+import * as tf from '@tensorflow/tfjs';
+import * as poseDetection from '@tensorflow-models/pose-detection';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
+import Svg, { Circle } from 'react-native-svg';
+// import { ExpoWebGLRenderingContext } from 'expo-gl';
 
-const inputTensorWidth = 152;
-const inputTensorHeight = 200;
-
+// tslint:disable-next-line: variable-name
 const TensorCamera = cameraWithTensors(Camera);
 
+const IS_ANDROID = Platform.OS === 'android';
+const IS_IOS = Platform.OS === 'ios';
+
+// Camera preview size.
+//
+// From experiments, to render camera feed without distortion, 16:9 ratio
+// should be used fo iOS devices and 4:3 ratio should be used for android
+// devices.
+//
+// This might not cover all cases.
+const CAM_PREVIEW_WIDTH = Dimensions.get('window').width;
+const CAM_PREVIEW_HEIGHT = CAM_PREVIEW_WIDTH / (IS_IOS ? 9 / 16 : 3 / 4);
+
+// The score threshold for pose detection results.
+const MIN_KEYPOINT_SCORE = 0.3;
+
+// The size of the resized output from TensorCamera.
+//
+// For movenet, the size here doesn't matter too much because the model will
+// preprocess the input (crop, resize, etc). For best result, use the size that
+// doesn't distort the image.
+const OUTPUT_TENSOR_WIDTH = 180;
+const OUTPUT_TENSOR_HEIGHT = OUTPUT_TENSOR_WIDTH / (IS_IOS ? 9 / 16 : 3 / 4);
+
+// Whether to auto-render TensorCamera preview.
+const AUTO_RENDER = false;
+
 export default function App() {
-  
-  const [hasCameraPermission, setHasCameraPermission] = useState(null);
-  const [camera, setCamera] = useState(null);
+  const cameraRef = useRef(null);
+  const [tfReady, setTfReady] = useState(false);
+  const [detector, setDetector] = useState(null);
+  const [poses, setPoses] = useState(null);
+  const [fps, setFps] = useState(0);
+  const [orientation, setOrientation] =
+    useState(ScreenOrientation.Orientation);
 
-  let textureDims;
-   if (Platform.OS === 'ios') {
-    textureDims = {
-      height: 1920,
-      width: 1080,
-    };
-   } else {
-    textureDims = {
-      height: 1200,
-      width: 1600,
-    };
-   }
-
-  // Screen Ratio and image padding
-  const [imagePadding, setImagePadding] = useState(0);
-  const [ratio, setRatio] = useState('4:3');  // default is 4:3
-  const { height, width } = Dimensions.get('window');
-  const screenRatio = height / width;
-  const [isRatioSet, setIsRatioSet] =  useState(false);
-
-  // on screen  load, ask for permission to use the camera
   useEffect(() => {
-    async function getCameraStatus() {
-      const { status } = await Camera.requestPermissionsAsync();
-      setHasCameraPermission(status == 'granted');
+    async function prepare() {
+      // Set initial orientation.
+      const curOrientation = await ScreenOrientation.getOrientationAsync();
+      setOrientation(curOrientation);
+
+      // Listens to orientation change.
+      ScreenOrientation.addOrientationChangeListener((event) => {
+        setOrientation(event.orientationInfo.orientation);
+      });
+
+      // Camera permission.
+      await Camera.requestPermissionsAsync();
+
+      // Wait for tfjs to initialize the backend.
+      await tf.ready();
+
+      // Load Blazepose model.
+      // https://github.com/tensorflow/tfjs-models/tree/master/pose-detection
+      const detector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.BlazePose,
+        {
+          modelType: 'full',
+          enableSmoothing: true,
+          runtime: 'tfjs'
+        }
+      );
+      setDetector(detector);
+
+      // Ready!
+      setTfReady(true);
     }
-    getCameraStatus();
+
+    prepare();
   }, []);
 
-   // set the camera ratio and padding.
-  // this code assumes a portrait mode screen
-  const prepareRatio = async () => {
-    let desiredRatio = '4:3';  // Start with the system default
-    // This issue only affects Android
-    if (Platform.OS === 'android') {
-      const ratios = await camera.getSupportedRatiosAsync();
+  const handleCameraStream = async (
+    images,
+    updatePreview,
+    gl
+  ) => {
+    const loop = async () => {
+      // Get the tensor and run pose detection.
+      const image = images.next().value;
+      const estimationConfig = {flipHorizontal: true};
+      const timestamp = performance.now();
+      const poses = await detector.estimatePoses(image, estimationConfig, timestamp);
+      const latency = performance.now() - timestamp;
+      setFps(Math.floor(1000 / latency));
+      setPoses(poses);
+      tf.dispose([image]);
 
-      // Calculate the width/height of each of the supported camera ratios
-      // These width/height are measured in landscape mode
-      // find the ratio that is closest to the screen ratio without going over
-      let distances = {};
-      let realRatios = {};
-      let minDistance = null;
-      for (const ratio of ratios) {
-        const parts = ratio.split(':');
-        const realRatio = parseInt(parts[0]) / parseInt(parts[1]);
-        realRatios[ratio] = realRatio;
-        // ratio can't be taller than screen, so we don't want an abs()
-        const distance = screenRatio - realRatio; 
-        distances[ratio] = realRatio;
-        if (minDistance == null) {
-          minDistance = ratio;
-        } else {
-          if (distance >= 0 && distance < distances[minDistance]) {
-            minDistance = ratio;
-          }
-        }
+      // Render camera preview manually when autorender=false.
+      if (!AUTO_RENDER) {
+        updatePreview();
+        gl.endFrameEXP();
       }
-      // set the best match
-      desiredRatio = minDistance;
-      //  calculate the difference between the camera width and the screen height
-      const remainder = Math.floor(
-        (height - realRatios[desiredRatio] * width) / 2
-      );
-      // set the preview padding and preview ratio
-      setImagePadding(remainder);
-      setRatio(desiredRatio);
-      // Set a flag so we don't do this 
-      // calculation each time the screen refreshes
-      setIsRatioSet(true);
+
+      requestAnimationFrame(loop);
+    };
+
+    loop();
+  };
+
+  const renderPose = () => {
+    if (poses != null && poses.length > 0) {
+      const keypoints = poses[0].keypoints
+        .filter((k) => (k.score ?? 0) > MIN_KEYPOINT_SCORE)
+        .map((k) => {
+          // Flip horizontally on android.
+          const x = IS_ANDROID ? OUTPUT_TENSOR_WIDTH - k.x : k.x;
+          const y = k.y;
+          const cx =
+            (x / getOutputTensorWidth()) *
+            (isPortrait() ? CAM_PREVIEW_WIDTH : CAM_PREVIEW_HEIGHT);
+          const cy =
+            (y / getOutputTensorHeight()) *
+            (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
+          return (
+            <Circle
+              key={`skeletonkp_${k.name}`}
+              cx={cx}
+              cy={cy}
+              r='4'
+              strokeWidth='2'
+              fill='#00AA00'
+              stroke='white'
+            />
+          );
+        });
+
+      return <Svg style={styles.svg}>{keypoints}</Svg>;
+    } else {
+      return <View></View>;
     }
   };
 
-  // the camera must be loaded in order to access the supported ratios
-  const setCameraReady = async() => {
-    if (!isRatioSet) {
-      await prepareRatio();
-    }
-  };
-
-  if (hasCameraPermission === null) {
+  const renderFps = () => {
     return (
-      <View style={styles.information}>
-        <Text>Waiting for camera permissions</Text>
+      <View style={styles.fpsContainer}>
+        <Text>FPS: {fps}</Text>
       </View>
     );
-  } else if (hasCameraPermission === false) {
+  };
+
+  const isPortrait = () => {
     return (
-      <View style={styles.information}>
-        <Text>No access to camera</Text>
+      orientation === ScreenOrientation.Orientation.PORTRAIT_UP ||
+      orientation === ScreenOrientation.Orientation.PORTRAIT_DOWN
+    );
+  };
+
+  const getOutputTensorWidth = () => {
+    // On iOS landscape mode, switch width and height of the output tensor to
+    // get better result. Without this, the image stored in the output tensor
+    // would be stretched too much.
+    //
+    // Same for getOutputTensorHeight below.
+    return isPortrait() || IS_ANDROID
+      ? OUTPUT_TENSOR_WIDTH
+      : OUTPUT_TENSOR_HEIGHT;
+  };
+
+  const getOutputTensorHeight = () => {
+    return isPortrait() || IS_ANDROID
+      ? OUTPUT_TENSOR_HEIGHT
+      : OUTPUT_TENSOR_WIDTH;
+  };
+
+  const getTextureRotationAngleInDegrees = () => {
+    // On Android, the camera texture will rotate behind the scene as the phone
+    // changes orientation, so we don't need to rotate it in TensorCamera.
+    if (IS_ANDROID) {
+      return 0;
+    }
+
+    // For iOS, the camera texture won't rotate automatically. Calculate the
+    // rotation angles here which will be passed to TensorCamera to rotate it
+    // internally.
+    switch (orientation) {
+      // Not supported on iOS as of 11/2021, but add it here just in case.
+      case ScreenOrientation.Orientation.PORTRAIT_DOWN:
+        return 180;
+      case ScreenOrientation.Orientation.LANDSCAPE_LEFT:
+        return 270;
+      case ScreenOrientation.Orientation.LANDSCAPE_RIGHT:
+        return 90;
+      default:
+        return 0;
+    }
+  };
+
+  if (!tfReady) {
+    return (
+      <View style={styles.loadingMsg}>
+        <Text>Loading...</Text>
       </View>
     );
   } else {
-
-  return (
-    // <TensorCamera
-    //   // Standard Camera props
-    //   style={styles.camera}
-    //   type={Camera.Constants.Type.front}
-    //   // Tensor related props
-    //   cameraTextureHeight={textureDims.height}
-    //   cameraTextureWidth={textureDims.width}
-    //   resizeHeight={200}
-    //   resizeWidth={152}
-    //   resizeDepth={3}
-    //   autorender={true}
-    // />
-      <Camera
-        style={[styles.cameraPreview, {marginTop: imagePadding, marginBottom: imagePadding}]}
-        onCameraReady={setCameraReady}
-        ratio={ratio}
-        ref={(ref) => {
-          setCamera(ref);
-        }}
-      />
+    return (
+      // Note that you don't need to specify `cameraTextureWidth` and
+      // `cameraTextureHeight` prop in `TensorCamera` below.
+      <View
+        style={
+          isPortrait() ? styles.containerPortrait : styles.containerLandscape
+        }
+      >
+        <TensorCamera
+          ref={cameraRef}
+          style={styles.camera}
+          autorender={AUTO_RENDER}
+          type={Camera.Constants.Type.front}
+          // tensor related props
+          resizeWidth={getOutputTensorWidth()}
+          resizeHeight={getOutputTensorHeight()}
+          resizeDepth={3}
+          rotation={getTextureRotationAngleInDegrees()}
+          onReady={handleCameraStream}
+        />
+        {renderPose()}
+        {renderFps()}
+      </View>
     );
   }
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center'
+  containerPortrait: {
+    position: 'relative',
+    width: CAM_PREVIEW_WIDTH,
+    height: CAM_PREVIEW_HEIGHT,
+    marginTop: Dimensions.get('window').height / 2 - CAM_PREVIEW_HEIGHT / 2,
   },
-  cameraPreview: {
-    flex: 1,
+  containerLandscape: {
+    position: 'relative',
+    width: CAM_PREVIEW_HEIGHT,
+    height: CAM_PREVIEW_WIDTH,
+    marginLeft: Dimensions.get('window').height / 2 - CAM_PREVIEW_HEIGHT / 2,
   },
-  buttonContainer: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
-    margin: 20,
-  },
-  button: {
-    flex: 0.1,
-    alignSelf: 'flex-end',
+  loadingMsg: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  text: {
-    fontSize: 18,
-    color: 'white',
+  camera: {
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
+  },
+  svg: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    zIndex: 30,
+  },
+  fpsContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    width: 80,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, .7)',
+    borderRadius: 2,
+    padding: 8,
+    zIndex: 20,
   },
 });
