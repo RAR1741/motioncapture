@@ -60,7 +60,7 @@ export default function App() {
       });
 
       // Camera permission.
-      await Camera.requestPermissionsAsync();
+      await Camera.requestCameraPermissionsAsync();
 
       // Wait for tfjs to initialize the backend.
       await tf.ready();
