@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Platform } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity } from 'react-native';
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
@@ -47,6 +47,7 @@ export default function App() {
   const [fps, setFps] = useState(0);
   const [orientation, setOrientation] =
     useState(ScreenOrientation.Orientation);
+  const [cameraType, setCameraType] = useState(Camera.Constants.Type.back);
 
   useEffect(() => {
     async function prepare() {
@@ -66,7 +67,6 @@ export default function App() {
       await tf.ready();
 
       // Load Blazepose model.
-      // https://github.com/tensorflow/tfjs-models/tree/master/pose-detection
       const detector = await poseDetection.createDetector(
         poseDetection.SupportedModels.BlazePose,
         {
@@ -133,7 +133,7 @@ export default function App() {
               cy={cy}
               r='4'
               strokeWidth='2'
-              fill='#00AA00'
+              fill='#8B008B'
               stroke='white'
             />
           );
@@ -218,8 +218,8 @@ export default function App() {
         <TensorCamera
           ref={cameraRef}
           style={styles.camera}
+          type={cameraType}
           autorender={AUTO_RENDER}
-          type={Camera.Constants.Type.front}
           // tensor related props
           resizeWidth={getOutputTensorWidth()}
           resizeHeight={getOutputTensorHeight()}
@@ -227,6 +227,16 @@ export default function App() {
           rotation={getTextureRotationAngleInDegrees()}
           onReady={handleCameraStream}
         />
+        <TouchableOpacity
+            onPress={() => {
+              setCameraType(
+                cameraType === Camera.Constants.Type.back
+                  ? Camera.Constants.Type.front
+                  : Camera.Constants.Type.back
+              );
+            }}>
+            <Text style={{ color: 'black' }}> Flip </Text>
+        </TouchableOpacity>
         {renderPose()}
         {renderFps()}
       </View>
