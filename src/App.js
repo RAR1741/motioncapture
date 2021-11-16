@@ -281,7 +281,7 @@ export default function App() {
                   : Camera.Constants.Type.back
               );
             }}>
-            <Text style={{ color: 'black' }}> Flip </Text>
+            <Text style={{ size:40 , color: 'black' }}> Flip </Text>
         </TouchableOpacity>
         {renderPose()}
         {renderFps()} */}
