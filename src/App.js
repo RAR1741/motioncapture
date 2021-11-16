@@ -8,6 +8,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
 import Svg, { Circle } from 'react-native-svg';
 // import { ExpoWebGLRenderingContext } from 'expo-gl';
+import { GLView } from 'expo-gl';
 
 // tslint:disable-next-line: variable-name
 const TensorCamera = cameraWithTensors(Camera);
@@ -215,6 +216,10 @@ export default function App() {
           isPortrait() ? styles.containerPortrait : styles.containerLandscape
         }
       >
+        <GLView 
+          style={{ width: 300, height: 300 }} 
+          onContextCreate={onContextCreate} 
+        />
         <TensorCamera
           ref={cameraRef}
           style={styles.camera}
