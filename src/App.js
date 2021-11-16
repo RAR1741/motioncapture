@@ -6,7 +6,7 @@ import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Line } from 'react-native-svg';
 // import { ExpoWebGLRenderingContext } from 'expo-gl';
 
 // tslint:disable-next-line: variable-name
@@ -139,11 +139,46 @@ export default function App() {
           );
         });
 
-      return <Svg style={styles.svg}>{keypoints}</Svg>;
+      const skeleton = poseDetection.util.getAdjacentPairs(poseDetection.SupportedModels.BlazePose).map(([i, j],index) => {
+        const keypoints = poses[0].keypoints;
+        const kp1 = keypoints[i];
+        const kp2 = keypoints[j];
+        const x1 = kp1.x
+        const y1 = kp1.y
+        const x2 = kp2.x
+        const y2 = kp2.y
+
+        const cx1 =
+            (x1 / getOutputTensorWidth()) *
+            (isPortrait() ? CAM_PREVIEW_WIDTH : CAM_PREVIEW_HEIGHT);
+        const cy1 =
+            (y1 / getOutputTensorHeight()) *
+            (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
+        const cx2 =
+            (x2 / getOutputTensorWidth()) *
+            (isPortrait() ? CAM_PREVIEW_WIDTH : CAM_PREVIEW_HEIGHT);
+        const cy2 =
+            (y2 / getOutputTensorHeight()) *
+            (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
+
+        return (<Line
+          key={`skeletonls_${index}`}
+          x1={cx1}
+          y1={cy1}
+          x2={cx2}
+          y2={cy2}
+          r='4'
+          stroke='red'
+          strokeWidth='1'
+        />);
+      });
+
+      return <Svg style={styles.svg}>{skeleton}{keypoints}</Svg>;
     } else {
       return <View></View>;
     }
   };
+
 
   const renderFps = () => {
     return (
