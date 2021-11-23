@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Platform } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Platform, Button } from 'react-native';
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
@@ -47,6 +47,7 @@ export default function App() {
   const [fps, setFps] = useState(0);
   const [orientation, setOrientation] =
     useState(ScreenOrientation.Orientation);
+  const [cameraType, setCameraType] = useState("front");
 
   useEffect(() => {
     async function prepare() {
@@ -120,12 +121,19 @@ export default function App() {
           // Flip horizontally on android.
           const x = IS_ANDROID ? OUTPUT_TENSOR_WIDTH - k.x : k.x;
           const y = k.y;
-          const cx =
+          let cx =
             (x / getOutputTensorWidth()) *
             (isPortrait() ? CAM_PREVIEW_WIDTH : CAM_PREVIEW_HEIGHT);
-          const cy =
+          let cy =
             (y / getOutputTensorHeight()) *
             (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
+          // if(cameraType === "front"){
+          //   cx = cx;
+          //   cy = cy;
+          // } else if(cameraType === "back"){
+          //   cx = cx;
+          //   cy = cy;
+          // }
           return (
             <Circle
               key={`skeletonkp_${k.name}`}
@@ -242,6 +250,15 @@ export default function App() {
       </View>
     );
   } else {
+
+    const cameraTypeHandler = () => {
+      if(cameraType === "back"){
+        setCameraType("front");
+      }else{
+        setCameraType("back");
+      }
+    };
+
     return (
       // Note that you don't need to specify `cameraTextureWidth` and
       // `cameraTextureHeight` prop in `TensorCamera` below.
@@ -254,7 +271,7 @@ export default function App() {
           ref={cameraRef}
           style={styles.camera}
           autorender={AUTO_RENDER}
-          type={Camera.Constants.Type.front}
+          type={cameraType}
           // tensor related props
           resizeWidth={getOutputTensorWidth()}
           resizeHeight={getOutputTensorHeight()}
@@ -262,6 +279,9 @@ export default function App() {
           rotation={getTextureRotationAngleInDegrees()}
           onReady={handleCameraStream}
         />
+        <Button
+          onPress={cameraTypeHandler}
+          title="Switch"/>
         {renderPose()}
         {renderFps()}
       </View>
