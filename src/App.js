@@ -5,7 +5,7 @@ import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
+import { cameraWithTensors, renderToGLView, toTexture } from '@tensorflow/tfjs-react-native';
 import Svg, { Circle } from 'react-native-svg';
 // import { ExpoWebGLRenderingContext } from 'expo-gl';
 import { GLView } from 'expo-gl';
@@ -71,7 +71,7 @@ export default function App() {
       const detector = await poseDetection.createDetector(
         poseDetection.SupportedModels.BlazePose,
         {
-          modelType: 'full',
+          modelType: 'lite',
           enableSmoothing: true,
           runtime: 'tfjs'
         }
@@ -100,6 +100,10 @@ export default function App() {
       setFps(Math.floor(1000 / latency));
       setPoses(poses);
       tf.dispose([image]);
+
+      size={height:500, width:500 };
+      const texture = toTexture(gl, image);
+      renderToGLView(gl, texture, size);
 
       // Render camera preview manually when autorender=false.
       if (!AUTO_RENDER) {
@@ -216,10 +220,6 @@ export default function App() {
           isPortrait() ? styles.containerPortrait : styles.containerLandscape
         }
       >
-        <GLView 
-          style={{ width: 300, height: 300 }} 
-          onContextCreate={onContextCreate} 
-        />
         <TensorCamera
           ref={cameraRef}
           style={styles.camera}
@@ -231,7 +231,8 @@ export default function App() {
           resizeDepth={3}
           rotation={getTextureRotationAngleInDegrees()}
           onReady={handleCameraStream}
-        />
+        >
+        </TensorCamera>
         <TouchableOpacity
             onPress={() => {
               setCameraType(
@@ -240,7 +241,7 @@ export default function App() {
                   : Camera.Constants.Type.back
               );
             }}>
-            <Text style={{ size:40 , color: 'black' }}> Flip </Text>
+            <Text style={{color: 'black' }}> Flip </Text>
         </TouchableOpacity>
         {renderPose()}
         {renderFps()}
