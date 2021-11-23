@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Platform, Button } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity, Button } from 'react-native';
+
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
@@ -49,6 +50,7 @@ export default function App() {
     useState(ScreenOrientation.Orientation);
   const [cameraType, setCameraType] = useState("front");
 
+
   useEffect(() => {
     async function prepare() {
       // Set initial orientation.
@@ -67,7 +69,6 @@ export default function App() {
       await tf.ready();
 
       // Load Blazepose model.
-      // https://github.com/tensorflow/tfjs-models/tree/master/pose-detection
       const detector = await poseDetection.createDetector(
         poseDetection.SupportedModels.BlazePose,
         {
@@ -141,7 +142,7 @@ export default function App() {
               cy={cy}
               r='4'
               strokeWidth='2'
-              fill='#00AA00'
+              fill='#8B008B'
               stroke='white'
             />
           );
@@ -151,9 +152,9 @@ export default function App() {
         const keypoints = poses[0].keypoints;
         const kp1 = keypoints[i];
         const kp2 = keypoints[j];
-        const x1 = kp1.x
+        const x1 = IS_ANDROID ? OUTPUT_TENSOR_WIDTH - kp1.x : kp1.x;
         const y1 = kp1.y
-        const x2 = kp2.x
+        const x2 = IS_ANDROID ? OUTPUT_TENSOR_WIDTH - kp2.x : kp2.x;
         const y2 = kp2.y
 
         const cx1 =
@@ -270,6 +271,7 @@ export default function App() {
         <TensorCamera
           ref={cameraRef}
           style={styles.camera}
+          type={cameraType}
           autorender={AUTO_RENDER}
           type={cameraType}
           // tensor related props
