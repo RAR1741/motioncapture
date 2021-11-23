@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity } from 'react-native';
+import { StyleSheet, Button, Text, View, Dimensions, Platform, TouchableOpacity } from 'react-native';
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
@@ -50,6 +50,7 @@ export default function App() {
   const [tfReady, setTfReady] = useState(false);
   const [detector, setDetector] = useState(null);
   const [poses, setPoses] = useState(null);
+  const [jsonPose, setJsonPose] = useState(null);
   const [fps, setFps] = useState(0);
   const [orientation, setOrientation] =
     useState(ScreenOrientation.Orientation);
@@ -149,6 +150,28 @@ export default function App() {
     } else {
       return <View></View>;
     }
+  };
+
+  const setCurrentPoseJson = () => {
+    setJsonPose(poses[0].keypoints3D);
+  };
+
+  const renderCurrentPoseJson = () => {
+
+    const poseObj = {
+      // name: currentPoseName,
+      image: jsonPose
+      // count: 0
+    }
+
+    const poseObjStr = JSON.stringify(poseObj);
+
+    console.log(poseObjStr);
+
+    // return(
+    //   <Text style={{ size:10 , color: 'black' }}> 
+    //   </Text>
+    // );
   };
 
   const renderFps = () => {
@@ -261,7 +284,7 @@ export default function App() {
             style={styles.pose3d} 
             onContextCreate={_onContextCreate} 
         />
-        {/* <TensorCamera
+        <TensorCamera
           ref={cameraRef}
           style={styles.camera}
           type={cameraType}
@@ -284,7 +307,13 @@ export default function App() {
             <Text style={{ size:40 , color: 'black' }}> Flip </Text>
         </TouchableOpacity>
         {renderPose()}
-        {renderFps()} */}
+        {renderFps()}
+        {renderCurrentPoseJson()}
+        <Button
+        title="Set Current Pose / Save JSON"
+        color="#f194ff"
+        onPress={() => setCurrentPoseJson}
+        />
       </View>
     );
   }
