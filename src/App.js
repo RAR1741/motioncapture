@@ -6,7 +6,6 @@ import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
-<<<<<<< HEAD
 
 import Svg, { Circle } from 'react-native-svg';
 import { GLView, ExpoWebGLRenderingContext} from 'expo-gl';
@@ -16,7 +15,6 @@ import { Scene, Mesh, MeshBasicMaterial, PerspectiveCamera, BoxGeometry } from '
 =======
 import Svg, { Circle, Line } from 'react-native-svg';
 // import { ExpoWebGLRenderingContext } from 'expo-gl';
->>>>>>> 5bbe7ed9dd3a75a36472cf9c1d9dfc7930c77848
 
 // tslint:disable-next-line: variable-name
 const TensorCamera = cameraWithTensors(Camera);
