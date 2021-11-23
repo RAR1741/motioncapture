@@ -26,7 +26,7 @@ const CAM_PREVIEW_WIDTH = Dimensions.get('window').width;
 const CAM_PREVIEW_HEIGHT = CAM_PREVIEW_WIDTH / (IS_IOS ? 9 / 16 : 3 / 4);
 
 // The score threshold for pose detection results.
-const MIN_KEYPOINT_SCORE = 0.3;
+const MIN_KEYPOINT_SCORE = 0.7;
 
 // The size of the resized output from TensorCamera.
 //
@@ -126,6 +126,7 @@ export default function App() {
           const cy =
             (y / getOutputTensorHeight()) *
             (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
+          if(k.score>MIN_KEYPOINT_SCORE){
           return (
             <Circle
               key={`skeletonkp_${k.name}`}
@@ -136,7 +137,7 @@ export default function App() {
               fill='#8B008B'
               stroke='white'
             />
-          );
+          );}
         });
 
       const skeleton = poseDetection.util.getAdjacentPairs(poseDetection.SupportedModels.BlazePose).map(([i, j],index) => {
@@ -160,7 +161,7 @@ export default function App() {
         const cy2 =
             (y2 / getOutputTensorHeight()) *
             (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
-
+        if(kp1.score>MIN_KEYPOINT_SCORE){
         return (<Line
           key={`skeletonls_${index}`}
           x1={cx1}
@@ -170,7 +171,7 @@ export default function App() {
           r='4'
           stroke='red'
           strokeWidth='1'
-        />);
+        />);}
       });
 
       return <Svg style={styles.svg}>{skeleton}{keypoints}</Svg>;
