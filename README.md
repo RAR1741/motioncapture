@@ -11,3 +11,6 @@
 - npm install react-native-canvas
 - npm install react-native-svg
 - npm install -g @expo/ngrok@4.1.0
+- npm install three
+- expo install expo-three
+
