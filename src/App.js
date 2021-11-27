@@ -1,19 +1,25 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity } from 'react-native';
+import { StyleSheet, Button, Text, View, Dimensions, Platform, TouchableOpacity } from 'react-native';
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
+
 import Svg, { Circle } from 'react-native-svg';
-// import { ExpoWebGLRenderingContext } from 'expo-gl';
+import { GLView, ExpoWebGLRenderingContext} from 'expo-gl';
+import { Renderer } from 'expo-three';
+import { THREE } from 'expo-three';
+import { Scene, Mesh, MeshBasicMaterial, PerspectiveCamera, BoxGeometry } from 'three';
 
 // tslint:disable-next-line: variable-name
 const TensorCamera = cameraWithTensors(Camera);
 
 const IS_ANDROID = Platform.OS === 'android';
 const IS_IOS = Platform.OS === 'ios';
+global.THREE = global.THREE || THREE;
+THREE.suppressMetroWarnings();
 
 // Camera preview size.
 //
@@ -44,6 +50,7 @@ export default function App() {
   const [tfReady, setTfReady] = useState(false);
   const [detector, setDetector] = useState(null);
   const [poses, setPoses] = useState(null);
+  const [jsonPose, setJsonPose] = useState(null);
   const [fps, setFps] = useState(0);
   const [orientation, setOrientation] =
     useState(ScreenOrientation.Orientation);
@@ -145,6 +152,28 @@ export default function App() {
     }
   };
 
+  const setCurrentPoseJson = () => {
+    setJsonPose(poses[0].keypoints3D);
+  };
+
+  const renderCurrentPoseJson = () => {
+
+    const poseObj = {
+      // name: currentPoseName,
+      image: jsonPose
+      // count: 0
+    }
+
+    const poseObjStr = JSON.stringify(poseObj);
+
+    console.log(poseObjStr);
+
+    // return(
+    //   <Text style={{ size:10 , color: 'black' }}> 
+    //   </Text>
+    // );
+  };
+
   const renderFps = () => {
     return (
       <View style={styles.fpsContainer}>
@@ -200,6 +229,42 @@ export default function App() {
     }
   };
 
+  const _onContextCreate = async (gl) =>{
+    //THREE.js code
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(
+      75,
+      gl.drawingBufferWidth / gl.drawingBufferHeight,
+      0.1,
+      1000
+    );
+
+    // gl.canvas = {width: gl.drawingBufferWidth, height: gl.drawingBufferHeight}
+
+    const renderer = new Renderer({ gl });
+    renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+    const geometry = new BoxGeometry(1,1,1);
+    const material = new MeshBasicMaterial({
+      color: 0x44aa8
+    });
+    const cube = new Mesh(geometry, material);
+    scene.add(cube);
+
+    camera.position.z = 5
+
+    const render = () =>{
+      requestAnimationFrame(render);
+      cube.rotation.x += 0.01;
+      cube.rotation.y += 0.01;
+      renderer.render(scene, camera);
+      gl.endFrameEXP();
+    }
+
+    render();
+
+  }
+
   if (!tfReady) {
     return (
       <View style={styles.loadingMsg}>
@@ -215,6 +280,10 @@ export default function App() {
           isPortrait() ? styles.containerPortrait : styles.containerLandscape
         }
       >
+        <GLView 
+            style={styles.pose3d} 
+            onContextCreate={_onContextCreate} 
+        />
         <TensorCamera
           ref={cameraRef}
           style={styles.camera}
@@ -235,10 +304,16 @@ export default function App() {
                   : Camera.Constants.Type.back
               );
             }}>
-            <Text style={{ color: 'black' }}> Flip </Text>
+            <Text style={{ size:40 , color: 'black' }}> Flip </Text>
         </TouchableOpacity>
         {renderPose()}
         {renderFps()}
+        {renderCurrentPoseJson()}
+        <Button
+        title="Set Current Pose / Save JSON"
+        color="#f194ff"
+        onPress={() => setCurrentPoseJson}
+        />
       </View>
     );
   }
@@ -273,7 +348,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'absolute',
-    zIndex: 30,
+    zIndex: 3,
   },
   fpsContainer: {
     position: 'absolute',
@@ -284,6 +359,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, .7)',
     borderRadius: 2,
     padding: 8,
-    zIndex: 20,
+    zIndex: 2,
+  },
+  pose3d: {
+    position: 'absolute',
+    width: 500,
+    height: 500,
+    alignItems: 'center',
+    zIndex: 4
   },
 });
