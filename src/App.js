@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Button, Text, View, Dimensions, Platform, TouchableOpacity } from 'react-native';
+import { StyleSheet, Button, Text, View, Dimensions, Platform, TouchableOpacity, TextInput } from 'react-native';
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
@@ -8,18 +8,11 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
 
 import Svg, { Circle } from 'react-native-svg';
-import { GLView, ExpoWebGLRenderingContext} from 'expo-gl';
-import { Renderer } from 'expo-three';
-import { THREE } from 'expo-three';
-import { Scene, Mesh, MeshBasicMaterial, PerspectiveCamera, BoxGeometry } from 'three';
 
-// tslint:disable-next-line: variable-name
 const TensorCamera = cameraWithTensors(Camera);
 
 const IS_ANDROID = Platform.OS === 'android';
 const IS_IOS = Platform.OS === 'ios';
-global.THREE = global.THREE || THREE;
-THREE.suppressMetroWarnings();
 
 // Camera preview size.
 //
@@ -47,6 +40,7 @@ const AUTO_RENDER = false;
 
 export default function App() {
   const cameraRef = useRef(null);
+  const [currentPoseName, setCurrentPoseName] = useState('');
   const [tfReady, setTfReady] = useState(false);
   const [detector, setDetector] = useState(null);
   const [poses, setPoses] = useState(null);
@@ -83,7 +77,6 @@ export default function App() {
         }
       );
       setDetector(detector);
-
       // Ready!
       setTfReady(true);
     }
@@ -156,22 +149,28 @@ export default function App() {
     setJsonPose(poses[0].keypoints3D);
   };
 
-  const renderCurrentPoseJson = () => {
-
+  const getCurrentPoseData = () => {
     const poseObj = {
-      // name: currentPoseName,
-      image: jsonPose
-      // count: 0
+      name: currentPoseName,
+      keypoints: jsonPose
     }
-
     const poseObjStr = JSON.stringify(poseObj);
+    return poseObjStr;
+  };
 
-    console.log(poseObjStr);
-
-    // return(
-    //   <Text style={{ size:10 , color: 'black' }}> 
-    //   </Text>
-    // );
+  const sendPoseData = () => {
+    const poseData = getCurrentPoseData();
+    fetch('http://3.20.237.206:80/pose_handler.php', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        secret: 'uindy',
+        data: poseData
+      })
+    });
   };
 
   const renderFps = () => {
@@ -229,42 +228,7 @@ export default function App() {
     }
   };
 
-  const _onContextCreate = async (gl) =>{
-    //THREE.js code
-    const scene = new Scene();
-    const camera = new PerspectiveCamera(
-      75,
-      gl.drawingBufferWidth / gl.drawingBufferHeight,
-      0.1,
-      1000
-    );
-
-    // gl.canvas = {width: gl.drawingBufferWidth, height: gl.drawingBufferHeight}
-
-    const renderer = new Renderer({ gl });
-    renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
-
-    const geometry = new BoxGeometry(1,1,1);
-    const material = new MeshBasicMaterial({
-      color: 0x44aa8
-    });
-    const cube = new Mesh(geometry, material);
-    scene.add(cube);
-
-    camera.position.z = 5
-
-    const render = () =>{
-      requestAnimationFrame(render);
-      cube.rotation.x += 0.01;
-      cube.rotation.y += 0.01;
-      renderer.render(scene, camera);
-      gl.endFrameEXP();
-    }
-
-    render();
-
-  }
-
+  
   if (!tfReady) {
     return (
       <View style={styles.loadingMsg}>
@@ -280,10 +244,6 @@ export default function App() {
           isPortrait() ? styles.containerPortrait : styles.containerLandscape
         }
       >
-        <GLView 
-            style={styles.pose3d} 
-            onContextCreate={_onContextCreate} 
-        />
         <TensorCamera
           ref={cameraRef}
           style={styles.camera}
@@ -303,16 +263,22 @@ export default function App() {
                   ? Camera.Constants.Type.front
                   : Camera.Constants.Type.back
               );
-            }}>
-            <Text style={{ size:40 , color: 'black' }}> Flip </Text>
+        }}>
+          <Text style={{ color: 'black' }}> Flip </Text>
         </TouchableOpacity>
         {renderPose()}
         {renderFps()}
-        {renderCurrentPoseJson()}
+        <TextInput
+          style={styles.input}
+          onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
+          value={currentPoseName}
+          placeholder="Type in pose name to be trained"
+          keyboardType="default"
+        />
         <Button
-        title="Set Current Pose / Save JSON"
-        color="#f194ff"
-        onPress={() => setCurrentPoseJson}
+          title="Set Current Pose / Save JSON"
+          color="#f194ff"
+          onPress={() => {setCurrentPoseJson(); sendPoseData();}}
         />
       </View>
     );
@@ -361,11 +327,10 @@ const styles = StyleSheet.create({
     padding: 8,
     zIndex: 2,
   },
-  pose3d: {
-    position: 'absolute',
-    width: 500,
-    height: 500,
-    alignItems: 'center',
-    zIndex: 4
+  input: {
+    height: 40,
+    margin: 12,
+    borderWidth: 1,
+    padding: 10,
   },
 });
