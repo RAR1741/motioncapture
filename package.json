@@ -20,9 +20,12 @@
     "expo-file-system": "~13.0.3",
     "expo-gl": "~11.0.3",
     "expo-gl-cpp": "~11.0.1",
+    "expo-permissions": "~13.0.3",
+    "expo-screen-orientation": "~4.0.3",
     "expo-splash-screen": "~0.13.3",
     "expo-status-bar": "~1.1.0",
     "expo-updates": "~0.10.5",
+    "form-data": "^4.0.0",
     "react": "17.0.1",
     "react-dom": "17.0.1",
     "react-native": "0.64.2",
@@ -32,11 +35,9 @@
     "react-native-reanimated": "~2.2.0",
     "react-native-safe-area-context": "3.3.2",
     "react-native-screens": "~3.8.0",
+    "react-native-svg": "12.1.1",
     "react-native-web": "0.17.1",
-    "undefined": "@tensorflow/tfjs-core,",
-    "expo-permissions": "~13.0.3",
-    "expo-screen-orientation": "~4.0.3",
-    "react-native-svg": "12.1.1"
+    "undefined": "@tensorflow/tfjs-core,"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",

@@ -6,8 +6,8 @@ import * as tf from '@tensorflow/tfjs';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
-
 import Svg, { Circle } from 'react-native-svg';
+import FormData from 'form-data';
 
 const TensorCamera = cameraWithTensors(Camera);
 
@@ -155,22 +155,29 @@ export default function App() {
       keypoints: jsonPose
     }
     const poseObjStr = JSON.stringify(poseObj);
+    console.log(poseObjStr);
     return poseObjStr;
   };
 
-  const sendPoseData = () => {
+  const sendPoseData = async () => {
     const poseData = getCurrentPoseData();
-    fetch('http://3.20.237.206:80/pose_handler.php', {
+    
+    //using FormData to create body data for the request
+    var formData = new FormData();
+    formData.append('secret', 'uindy');
+    formData.append('data', poseData);
+
+    let postData = {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'multipart/form-data'
       },
-      body: JSON.stringify({
-        secret: 'uindy',
-        data: poseData
-      })
-    });
+      body: formData
+    };
+    const response = await fetch('http://3.20.237.206/pose_handler.php', postData);
+    const response_data = await JSON.stringify(response);
+    console.log(response_data);
   };
 
   const renderFps = () => {
