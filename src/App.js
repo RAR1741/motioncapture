@@ -48,7 +48,7 @@ export default function App() {
   const [fps, setFps] = useState(0);
   const [orientation, setOrientation] =
     useState(ScreenOrientation.Orientation);
-  const [cameraType, setCameraType] = useState("front");
+  const [cameraType, setCameraType] = useState(Camera.Constants.Type.front);
 
 
   useEffect(() => {
@@ -247,10 +247,10 @@ export default function App() {
   } else {
 
     const cameraTypeHandler = () => {
-      if(cameraType === "back"){
-        setCameraType("front");
+      if(cameraType === Camera.Constants.Type.back){
+        setCameraType(Camera.Constants.Type.front);
       }else{
-        setCameraType("back");
+        setCameraType(Camera.Constants.Type.back);
       }
     };
 
