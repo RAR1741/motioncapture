@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity, Button } from 'react-native';
-
+import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity, Button,TextInput } from 'react-native';
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
@@ -8,9 +7,8 @@ import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
-// import { ExpoWebGLRenderingContext } from 'expo-gl';
+import FormData from 'form-data';
 
-// tslint:disable-next-line: variable-name
 const TensorCamera = cameraWithTensors(Camera);
 
 const IS_ANDROID = Platform.OS === 'android';
@@ -23,7 +21,7 @@ const IS_IOS = Platform.OS === 'ios';
 // devices.
 //
 // This might not cover all cases.
-const CAM_PREVIEW_WIDTH = Dimensions.get('window').width;
+const CAM_PREVIEW_WIDTH = Dimensions.get('window').width /1.25;
 const CAM_PREVIEW_HEIGHT = CAM_PREVIEW_WIDTH / (IS_IOS ? 9 / 16 : 3 / 4);
 
 // The score threshold for pose detection results.
@@ -42,13 +40,16 @@ const AUTO_RENDER = false;
 
 export default function App() {
   const cameraRef = useRef(null);
+  const [currentPoseName, setCurrentPoseName] = useState('');
   const [tfReady, setTfReady] = useState(false);
   const [detector, setDetector] = useState(null);
   const [poses, setPoses] = useState(null);
   const [fps, setFps] = useState(0);
+  const [jsonPose, setJsonPose] = useState(null);
   const [orientation, setOrientation] =
     useState(ScreenOrientation.Orientation);
   const [cameraType, setCameraType] = useState(Camera.Constants.Type.front);
+  const [dataStatus, setDataStatus] = useState('Waiting for button press');
 
 
   useEffect(() => {
@@ -78,7 +79,6 @@ export default function App() {
         }
       );
       setDetector(detector);
-
       // Ready!
       setTfReady(true);
     }
@@ -100,6 +100,11 @@ export default function App() {
       const latency = performance.now() - timestamp;
       setFps(Math.floor(1000 / latency));
       setPoses(poses);
+      if(poses.length>0){
+        //console.log("3dPose data", poses[0].keypoints3D)
+        setJsonPose(poses[0].keypoints3D)
+      }
+      //setJsonPose(poses.keypoints);
       tf.dispose([image]);
 
       // Render camera preview manually when autorender=false.
@@ -182,6 +187,62 @@ export default function App() {
     }
   };
 
+  const setCurrentPoseJson = () => {
+    //console.log('setting pose json', poses.length)
+    setJsonPose(poses[0].keypoints3D);
+  };
+
+  const getCurrentPoseData = () => {
+    const poseObj = {
+      name: currentPoseName,
+      keypoints: jsonPose
+    }
+    const poseObjStr = JSON.stringify(poseObj);
+    //console.log("poseObjectStr: ", poseObjStr);
+    return poseObjStr;
+  };
+
+  const begin = async () =>{
+    setTimeout(() => {
+      sendPoseData();
+      }, 3000);
+  }
+  const sendDataLoop = async ()=>{
+    setDataStatus("Waiting to send data for 5 seconds...")
+    await timeout(5000)
+    setDataStatus("Sending Data")
+    for(let i =0; i<200; i++){
+      setCurrentPoseJson(); 
+      sendPoseData();
+    }
+    setDataStatus("stopped sending Data")
+  }
+  function timeout(delay) {
+    return new Promise( res => setTimeout(res, delay) );
+}
+
+  const sendPoseData = async () => {
+    const poseData = getCurrentPoseData();
+    
+    //using FormData to create body data for the request
+    var formData = new FormData();
+    formData.append('secret', 'uindy');
+    formData.append('data', poseData);
+    //console.log(poseData)
+
+    let postData = {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'multipart/form-data'
+      },
+      body: formData
+    };
+    const response = await fetch('http://3.20.237.206/pose_handler.php', postData);
+    const response_data = await JSON.stringify(response);
+    //console.log(response_data);
+    
+  };
 
   const renderFps = () => {
     return (
@@ -280,6 +341,19 @@ export default function App() {
           title="Switch"/>
         {renderPose()}
         {renderFps()}
+        <TextInput
+          style={styles.input}
+          onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
+          value={currentPoseName}
+          placeholder="Type in pose name to be trained"
+          keyboardType="default"
+        />
+        <Button
+          title="Set Current Pose / Save JSON"
+          color="#f194ff"
+          onPress={() => {sendDataLoop();}}
+        />
+        <Text>{dataStatus}</Text>
       </View>
     );
   }
