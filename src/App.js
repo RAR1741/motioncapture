@@ -8,6 +8,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
 import FormData from 'form-data';
+import Countdown from 'react-countdown';
 
 const TensorCamera = cameraWithTensors(Camera);
 
@@ -49,8 +50,10 @@ export default function App() {
   const [orientation, setOrientation] =
     useState(ScreenOrientation.Orientation);
   const [cameraType, setCameraType] = useState(Camera.Constants.Type.front);
-  const [dataStatus, setDataStatus] = useState('Waiting for button press');
-
+  const [frameCount, setFrameCount] = useState(0);
+  const [timerCount, setTimerCount] = useState(0);
+  const [tempFrameCount, setTempFrameCount] = useState(0);
+  const [dataStatus, setDataStatus] = useState('');
 
   useEffect(() => {
     async function prepare() {
@@ -100,6 +103,12 @@ export default function App() {
       const latency = performance.now() - timestamp;
       setFps(Math.floor(1000 / latency));
       setPoses(poses);
+      if(tempFrameCount>0) {  //will run when timer hits 0 for 
+                              //pose record button
+        setCurrentPoseJson();
+        sendPoseData();
+        setTempFrameCount(tempFrameCount-1);  //keeps track of frames sent
+      }
       if(poses.length>0){
         //console.log("3dPose data", poses[0].keypoints3D)
         setJsonPose(poses[0].keypoints3D)
@@ -202,25 +211,6 @@ export default function App() {
     return poseObjStr;
   };
 
-  const begin = async () =>{
-    setTimeout(() => {
-      sendPoseData();
-      }, 3000);
-  }
-  const sendDataLoop = async ()=>{
-    setDataStatus("Waiting to send data for 5 seconds...")
-    await timeout(5000)
-    setDataStatus("Sending Data")
-    for(let i =0; i<200; i++){
-      setCurrentPoseJson(); 
-      sendPoseData();
-    }
-    setDataStatus("stopped sending Data")
-  }
-  function timeout(delay) {
-    return new Promise( res => setTimeout(res, delay) );
-}
-
   const sendPoseData = async () => {
     const poseData = getCurrentPoseData();
     
@@ -315,6 +305,51 @@ export default function App() {
       }
     };
 
+    // const countDownTimer = (time) => {
+    //   if(time > 0)
+    //   {
+    //     return (
+    //       <View style={styles.timer}>
+    //         <Text>{time}</Text>
+    //       </View>
+    //     );
+    //   }else
+    //   {
+    //     return (null);
+    //   }
+    // }
+
+    const countdownPoseDataSender = () => {
+      var tempTimer = timerCount
+      for(let i=0; i<tempTimer; i--)
+      {
+        // const timer = setTimeout(() => {countDownTimer(tempTimer);}, 1000);
+        // clearTimeout(timer);
+        
+      }
+      setTempFrameCount(frameCount);
+    };
+
+    const timerRenderer = ({ completed }) => {
+      if (completed) {
+        setTempFrameCount(frameCount);
+        setDataStatus("Pose Data Sent!");
+      } 
+      // else {
+      //   // Render a countdown
+      //   return <span>{seconds}</span>;
+      // }
+    };
+
+    const renderCountdown = () => {
+      return(
+        <Countdown
+          date={Date.now() + timerCount}
+          timerRenderer={timerRenderer}
+        />
+      );
+    };
+
     return (
       // Note that you don't need to specify `cameraTextureWidth` and
       // `cameraTextureHeight` prop in `TensorCamera` below.
@@ -348,10 +383,24 @@ export default function App() {
           placeholder="Type in pose name to be trained"
           keyboardType="default"
         />
+        <TextInput
+          style={styles.input}
+          onChangeText={setTimerCount}
+          value={timerCount.toString()}
+          placeholder="countdown before sending"
+          keyboardType="number-pad"
+        />
+        <TextInput
+          style={styles.input}
+          onChangeText={setFrameCount}
+          value={frameCount.toString()}
+          placeholder="number of frames to send"
+          keyboardType="number-pad"
+        />
         <Button
-          title="Set Current Pose / Save JSON"
+          title="Record and Send Pose Data"
           color="#f194ff"
-          onPress={() => {sendDataLoop();}}
+          onPress={() => {renderCountdown(); setDataStatus("Sending Pose Data");}}
         />
         <Text>{dataStatus}</Text>
       </View>
@@ -382,7 +431,7 @@ const styles = StyleSheet.create({
   camera: {
     width: '100%',
     height: '100%',
-    zIndex: 1,
+    zIndex: 2,
   },
   svg: {
     width: '100%',
@@ -400,5 +449,11 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     padding: 8,
     zIndex: 20,
+  },
+  timer: {
+    position: 'absolute',
+    opacity: 0.5,
+    top: 0.5,
+    left: 0.5,
   },
 });
