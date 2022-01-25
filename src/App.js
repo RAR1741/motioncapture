@@ -50,6 +50,8 @@ export default function App() {
     useState(ScreenOrientation.Orientation);
   const [cameraType, setCameraType] = useState(Camera.Constants.Type.front);
   const [dataStatus, setDataStatus] = useState('Waiting for button press');
+  const [dataArray, setDataArray] = useState([]);
+  let newArray = []
 
 
   useEffect(() => {
@@ -100,7 +102,20 @@ export default function App() {
       const latency = performance.now() - timestamp;
       setFps(Math.floor(1000 / latency));
       setPoses(poses);
-      setCurrentPoseJson();
+
+      if(newArray.length==0){
+        console.log("waiting...")
+        setDataStatus("Waiting for 5 seconds to collect data...")
+        await timeout(5000)
+      }
+      if(poses.length>0 && newArray.length<200){
+        console.log("Collecting Data")
+        newArray.push(poses[0].keypoints3D)
+        setDataStatus("Collecting Data")
+      }else if(newArray.length==200){
+        setCurrentPoseJson(newArray);
+        setDataStatus("Name pose and push button to send data")
+      }
       tf.dispose([image]);
 
       // Render camera preview manually when autorender=false.
@@ -183,32 +198,26 @@ export default function App() {
     }
   };
 
-  const setCurrentPoseJson = () => {
-    //console.log('setting pose json', poses.length)
-    setJsonPose(poses[0].keypoints3D);
+  const setCurrentPoseJson = (dataArray) => {
+    setJsonPose(dataArray);
   };
 
   const getCurrentPoseData = () => {
+    console.log("getting current poseData", jsonPose.length)
     const poseObj = {
       name: currentPoseName,
       keypoints: jsonPose
     }
     const poseObjStr = JSON.stringify(poseObj);
-    console.log("poseObjectStr: ", poseObjStr);
     return poseObjStr;
   };
 
-  const begin = async () =>{
-    setTimeout(() => {
-      sendPoseData();
-      }, 3000);
-  }
   const sendDataLoop = async ()=>{
-    setDataStatus("Waiting to send data for 5 seconds...")
-    await timeout(5000)
-    setDataStatus("Sending Data")
+    //setCurrentPoseJson();
+    console.log("sending data loop")
     sendPoseData();
-    setDataStatus("stopped sending Data")
+    newArray = []
+    setDataStatus("sent the data")
   }
   function timeout(delay) {
     return new Promise( res => setTimeout(res, delay) );
@@ -221,7 +230,6 @@ export default function App() {
     var formData = new FormData();
     formData.append('secret', 'uindy');
     formData.append('data', poseData);
-    //console.log(poseData)
 
     let postData = {
       method: 'POST',
@@ -233,7 +241,6 @@ export default function App() {
     };
     const response = await fetch('http://3.20.237.206/pose_handler.php', postData);
     const response_data = await JSON.stringify(response);
-    //console.log(response_data);
     
   };
 
