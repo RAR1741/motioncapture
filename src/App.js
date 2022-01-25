@@ -100,11 +100,7 @@ export default function App() {
       const latency = performance.now() - timestamp;
       setFps(Math.floor(1000 / latency));
       setPoses(poses);
-      if(poses.length>0){
-        //console.log("3dPose data", poses[0].keypoints3D)
-        setJsonPose(poses[0].keypoints3D)
-      }
-      //setJsonPose(poses.keypoints);
+      setCurrentPoseJson();
       tf.dispose([image]);
 
       // Render camera preview manually when autorender=false.
@@ -198,7 +194,7 @@ export default function App() {
       keypoints: jsonPose
     }
     const poseObjStr = JSON.stringify(poseObj);
-    //console.log("poseObjectStr: ", poseObjStr);
+    console.log("poseObjectStr: ", poseObjStr);
     return poseObjStr;
   };
 
@@ -211,10 +207,7 @@ export default function App() {
     setDataStatus("Waiting to send data for 5 seconds...")
     await timeout(5000)
     setDataStatus("Sending Data")
-    for(let i =0; i<200; i++){
-      setCurrentPoseJson(); 
-      sendPoseData();
-    }
+    sendPoseData();
     setDataStatus("stopped sending Data")
   }
   function timeout(delay) {
