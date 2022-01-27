@@ -354,7 +354,7 @@ export default function App() {
           color="#f194ff"
           onPress={() => {sendDataLoop();}}
         />
-        <Text>{dataStatus}</Text>
+        <Text style={styles.dataStatus}>{dataStatus}</Text>
       </View>
     );
   }
@@ -402,4 +402,7 @@ const styles = StyleSheet.create({
     padding: 8,
     zIndex: 20,
   },
+  dataStatus: {
+    fontSize: 30,
+  }
 });
