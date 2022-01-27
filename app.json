@@ -1,5 +1,6 @@
 {
   "expo": {
+    "entryPoint": "./src/MM.js",
     "name": "motioncapture",
     "slug": "motioncapture",
     "version": "1.0.0",
