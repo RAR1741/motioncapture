@@ -100,7 +100,7 @@ export default function App() {
       const timestamp = performance.now();
       const poses = await detector.estimatePoses(image, estimationConfig, timestamp);
       const latency = performance.now() - timestamp;
-      const numFrames = 400;
+      const numFrames = 300;
       setFps(Math.floor(1000 / latency));
       setPoses(poses);
 
