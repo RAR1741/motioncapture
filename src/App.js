@@ -100,19 +100,20 @@ export default function App() {
       const timestamp = performance.now();
       const poses = await detector.estimatePoses(image, estimationConfig, timestamp);
       const latency = performance.now() - timestamp;
+      const numFrames = 400;
       setFps(Math.floor(1000 / latency));
       setPoses(poses);
 
       if(newArray.length==0){
-        console.log("waiting...")
+        //console.log("waiting...")
         setDataStatus("Waiting for 5 seconds to collect data...")
         await timeout(5000)
       }
-      if(poses.length>0 && newArray.length<200){
-        console.log("Collecting Data")
+      if(poses.length>0 && newArray.length<numFrames){
+        //console.log("Collecting Data")
         newArray.push(poses[0].keypoints3D)
         setDataStatus("Collecting Data")
-      }else if(newArray.length==200){
+      }else if(newArray.length==numFrames){
         setCurrentPoseJson(newArray);
         setDataStatus("Name pose and push button to send data")
       }
@@ -203,7 +204,7 @@ export default function App() {
   };
 
   const getCurrentPoseData = () => {
-    console.log("getting current poseData", jsonPose.length)
+    //console.log("getting current poseData", jsonPose.length)
     const poseObj = {
       name: currentPoseName,
       keypoints: jsonPose
@@ -214,7 +215,7 @@ export default function App() {
 
   const sendDataLoop = async ()=>{
     //setCurrentPoseJson();
-    console.log("sending data loop")
+    //console.log("sending data loop")
     sendPoseData();
     newArray = []
     setDataStatus("sent the data")
