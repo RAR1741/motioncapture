@@ -404,5 +404,8 @@ const styles = StyleSheet.create({
   },
   dataStatus: {
     fontSize: 30,
+  }, 
+  input: {
+    height: 30,
   }
 });
