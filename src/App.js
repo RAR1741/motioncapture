@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity, Button } from 'react-native';
-
+import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity, Button,TextInput } from 'react-native';
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
@@ -8,9 +7,8 @@ import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
-// import { ExpoWebGLRenderingContext } from 'expo-gl';
+import FormData from 'form-data';
 
-// tslint:disable-next-line: variable-name
 const TensorCamera = cameraWithTensors(Camera);
 
 const IS_ANDROID = Platform.OS === 'android';
@@ -23,7 +21,7 @@ const IS_IOS = Platform.OS === 'ios';
 // devices.
 //
 // This might not cover all cases.
-const CAM_PREVIEW_WIDTH = Dimensions.get('window').width;
+const CAM_PREVIEW_WIDTH = Dimensions.get('window').width/1.1;
 const CAM_PREVIEW_HEIGHT = CAM_PREVIEW_WIDTH / (IS_IOS ? 9 / 16 : 3 / 4);
 
 // The score threshold for pose detection results.
@@ -42,13 +40,18 @@ const AUTO_RENDER = false;
 
 export default function App() {
   const cameraRef = useRef(null);
+  const [currentPoseName, setCurrentPoseName] = useState('');
   const [tfReady, setTfReady] = useState(false);
   const [detector, setDetector] = useState(null);
   const [poses, setPoses] = useState(null);
   const [fps, setFps] = useState(0);
+  const [jsonPose, setJsonPose] = useState(null);
   const [orientation, setOrientation] =
     useState(ScreenOrientation.Orientation);
   const [cameraType, setCameraType] = useState(Camera.Constants.Type.front);
+  const [dataStatus, setDataStatus] = useState('Waiting for button press');
+  const [dataArray, setDataArray] = useState([]);
+  let newArray = []
 
 
   useEffect(() => {
@@ -78,7 +81,6 @@ export default function App() {
         }
       );
       setDetector(detector);
-
       // Ready!
       setTfReady(true);
     }
@@ -98,8 +100,23 @@ export default function App() {
       const timestamp = performance.now();
       const poses = await detector.estimatePoses(image, estimationConfig, timestamp);
       const latency = performance.now() - timestamp;
+      const numFrames = 300;
       setFps(Math.floor(1000 / latency));
       setPoses(poses);
+
+      if(newArray.length==0){
+        //console.log("waiting...")
+        setDataStatus("Waiting for 5 seconds to collect data...")
+        await timeout(5000)
+      }
+      if(poses.length>0 && newArray.length<numFrames){
+        //console.log("Collecting Data")
+        newArray.push(poses[0].keypoints3D)
+        setDataStatus("Collecting Data")
+      }else if(newArray.length==numFrames){
+        setCurrentPoseJson(newArray);
+        setDataStatus("Name pose and push button to send data")
+      }
       tf.dispose([image]);
 
       // Render camera preview manually when autorender=false.
@@ -182,6 +199,51 @@ export default function App() {
     }
   };
 
+  const setCurrentPoseJson = (dataArray) => {
+    setJsonPose(dataArray);
+  };
+
+  const getCurrentPoseData = () => {
+    //console.log("getting current poseData", jsonPose.length)
+    const poseObj = {
+      name: currentPoseName,
+      keypoints: jsonPose
+    }
+    const poseObjStr = JSON.stringify(poseObj);
+    return poseObjStr;
+  };
+
+  const sendDataLoop = async ()=>{
+    //setCurrentPoseJson();
+    //console.log("sending data loop")
+    sendPoseData();
+    newArray = []
+    setDataStatus("sent the data")
+  }
+  function timeout(delay) {
+    return new Promise( res => setTimeout(res, delay) );
+}
+
+  const sendPoseData = async () => {
+    const poseData = getCurrentPoseData();
+    
+    //using FormData to create body data for the request
+    var formData = new FormData();
+    formData.append('secret', 'uindy');
+    formData.append('data', poseData);
+
+    let postData = {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'multipart/form-data'
+      },
+      body: formData
+    };
+    const response = await fetch('http://3.20.237.206/pose_handler.php', postData);
+    const response_data = await JSON.stringify(response);
+    
+  };
 
   const renderFps = () => {
     return (
@@ -275,11 +337,31 @@ export default function App() {
           rotation={getTextureRotationAngleInDegrees()}
           onReady={handleCameraStream}
         />
-        <Button
+        <TouchableOpacity
+          style={styles.switch}
           onPress={cameraTypeHandler}
-          title="Switch"/>
+        >
+        <Text>Switch</Text>
+        </TouchableOpacity>
         {renderPose()}
         {renderFps()}
+        <View style={styles.row}>
+        <View><TextInput
+            style={styles.input}
+            onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
+            value={currentPoseName}
+            placeholder="Type in pose name to be trained"
+            keyboardType="default"
+          /></View>
+          <View><Button
+          style={styles.sendButton}
+          title="Send"
+          color="#f194ff"
+          onPress={() => {sendDataLoop();}}
+          /></View>        
+        </View>
+        
+        <Text style={styles.dataStatus}>{dataStatus}</Text>
       </View>
     );
   }
@@ -290,7 +372,10 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: CAM_PREVIEW_WIDTH,
     height: CAM_PREVIEW_HEIGHT,
-    marginTop: Dimensions.get('window').height / 2 - CAM_PREVIEW_HEIGHT / 2,
+    //marginTop: Dimensions.get('window').height / 2 - CAM_PREVIEW_HEIGHT / 2,
+    marginTop: 50,
+    marginLeft: 17,
+    alignItems: 'center',
   },
   containerLandscape: {
     position: 'relative',
@@ -308,6 +393,9 @@ const styles = StyleSheet.create({
   camera: {
     width: '100%',
     height: '100%',
+    marginTop: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 1,
   },
   svg: {
@@ -327,4 +415,34 @@ const styles = StyleSheet.create({
     padding: 8,
     zIndex: 20,
   },
+  switch: {
+    position: 'absolute',
+    top: 50,
+    left: 10,
+    width: 80,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, .7)',
+    borderRadius: 2,
+    padding: 8,
+    zIndex: 20,
+  },
+  dataStatus: {
+    fontSize: 30,
+  }, 
+  input: {
+    height: 30,
+    borderRadius: 2,
+    padding: 8,
+    borderWidth: 2,
+    borderColor: 'grey',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  sendButton:{
+    flex:2
+  }
 });
