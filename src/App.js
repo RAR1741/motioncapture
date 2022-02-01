@@ -21,7 +21,7 @@ const IS_IOS = Platform.OS === 'ios';
 // devices.
 //
 // This might not cover all cases.
-const CAM_PREVIEW_WIDTH = Dimensions.get('window').width /1.25;
+const CAM_PREVIEW_WIDTH = Dimensions.get('window').width/1.1;
 const CAM_PREVIEW_HEIGHT = CAM_PREVIEW_WIDTH / (IS_IOS ? 9 / 16 : 3 / 4);
 
 // The score threshold for pose detection results.
@@ -337,23 +337,30 @@ export default function App() {
           rotation={getTextureRotationAngleInDegrees()}
           onReady={handleCameraStream}
         />
-        <Button
+        <TouchableOpacity
+          style={styles.switch}
           onPress={cameraTypeHandler}
-          title="Switch"/>
+        >
+        <Text>Switch</Text>
+        </TouchableOpacity>
         {renderPose()}
         {renderFps()}
-        <TextInput
-          style={styles.input}
-          onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
-          value={currentPoseName}
-          placeholder="Type in pose name to be trained"
-          keyboardType="default"
-        />
-        <Button
-          title="Set Current Pose / Save JSON"
+        <View style={styles.row}>
+        <View><TextInput
+            style={styles.input}
+            onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
+            value={currentPoseName}
+            placeholder="Type in pose name to be trained"
+            keyboardType="default"
+          /></View>
+          <View><Button
+          style={styles.sendButton}
+          title="Send"
           color="#f194ff"
           onPress={() => {sendDataLoop();}}
-        />
+          /></View>        
+        </View>
+        
         <Text style={styles.dataStatus}>{dataStatus}</Text>
       </View>
     );
@@ -365,7 +372,10 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: CAM_PREVIEW_WIDTH,
     height: CAM_PREVIEW_HEIGHT,
-    marginTop: Dimensions.get('window').height / 2 - CAM_PREVIEW_HEIGHT / 2,
+    //marginTop: Dimensions.get('window').height / 2 - CAM_PREVIEW_HEIGHT / 2,
+    marginTop: 50,
+    marginLeft: 17,
+    alignItems: 'center',
   },
   containerLandscape: {
     position: 'relative',
@@ -383,6 +393,9 @@ const styles = StyleSheet.create({
   camera: {
     width: '100%',
     height: '100%',
+    marginTop: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 1,
   },
   svg: {
@@ -402,10 +415,34 @@ const styles = StyleSheet.create({
     padding: 8,
     zIndex: 20,
   },
+  switch: {
+    position: 'absolute',
+    top: 50,
+    left: 10,
+    width: 80,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, .7)',
+    borderRadius: 2,
+    padding: 8,
+    zIndex: 20,
+  },
   dataStatus: {
     fontSize: 30,
   }, 
   input: {
     height: 30,
+    borderRadius: 2,
+    padding: 8,
+    borderWidth: 2,
+    borderColor: 'grey',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  sendButton:{
+    flex:2
   }
 });
