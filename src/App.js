@@ -112,11 +112,29 @@ export default function App() {
       if(poses.length>0 && newArray.length<numFrames){
         //console.log("Collecting Data")
         newArray.push(poses[0].keypoints3D)
+        //console.log(poses[0].keypoints3D[0]['x'])
+
         setDataStatus("Collecting Data")
       }else if(newArray.length==numFrames){
         setCurrentPoseJson(newArray);
         setDataStatus("Name pose and push button to send data")
       }
+      // FIXME const predictionResponse = await this.modelService.classifyImage(poses[0].keypoints3D); IMPLEMENT THIS LINE
+      //ADD IN JSON PARSING, USE poses[0].keypoints3D
+      if (poses.length > 0) {
+        //define a new array
+        let arr_expanded = []
+        for (let i = 0; i < 33; i++) {
+          //array.push??? x3 (x,y,z)
+          arr_expanded.push(poses[0].keypoints3D[i]['x'])
+          arr_expanded.push(poses[0].keypoints3D[i]['y'])
+          arr_expanded.push(poses[0].keypoints3D[i]['z'])
+          // console.log(poses[0].keypoints3D[i]['name'])
+          // console.log(poses[0].keypoints3D[i]['x'])
+        }
+        console.log(arr_expanded.length)
+      }
+
       tf.dispose([image]);
 
       // Render camera preview manually when autorender=false.
