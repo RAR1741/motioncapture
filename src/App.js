@@ -8,6 +8,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
 import FormData from 'form-data';
+import ModelService from './ModelService'
 
 const TensorCamera = cameraWithTensors(Camera);
 
@@ -121,19 +122,9 @@ export default function App() {
       }
       // FIXME const predictionResponse = await this.modelService.classifyImage(poses[0].keypoints3D); IMPLEMENT THIS LINE
       //ADD IN JSON PARSING, USE poses[0].keypoints3D
-      if (poses.length > 0) {
-        //define a new array
-        let arr_expanded = []
-        for (let i = 0; i < 33; i++) {
-          //array.push??? x3 (x,y,z)
-          arr_expanded.push(poses[0].keypoints3D[i]['x'])
-          arr_expanded.push(poses[0].keypoints3D[i]['y'])
-          arr_expanded.push(poses[0].keypoints3D[i]['z'])
-          // console.log(poses[0].keypoints3D[i]['name'])
-          // console.log(poses[0].keypoints3D[i]['x'])
-        }
-        console.log(arr_expanded.length)
-      }
+      let arr_expanded = []
+      arr_expanded = ModelService.formatArray(poses)
+      
 
       tf.dispose([image]);
 
