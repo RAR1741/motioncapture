@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity, Button,TextInput } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity, Button,TextInput, KeyboardAvoidingView} from 'react-native';
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
@@ -8,6 +8,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { cameraWithTensors } from '@tensorflow/tfjs-react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
 import FormData from 'form-data';
+import { WhiteBalance } from 'expo-camera/build/Camera.types';
 
 const TensorCamera = cameraWithTensors(Camera);
 
@@ -38,6 +39,7 @@ const OUTPUT_TENSOR_HEIGHT = OUTPUT_TENSOR_WIDTH / (IS_IOS ? 9 / 16 : 3 / 4);
 // Whether to auto-render TensorCamera preview.
 const AUTO_RENDER = false;
 
+
 export default function App() {
   const cameraRef = useRef(null);
   const [currentPoseName, setCurrentPoseName] = useState('');
@@ -50,9 +52,9 @@ export default function App() {
     useState(ScreenOrientation.Orientation);
   const [cameraType, setCameraType] = useState(Camera.Constants.Type.front);
   const [dataStatus, setDataStatus] = useState('Waiting for button press');
+  const [colordataStatus, setcolorDataStatus] = useState('red')
   const [dataArray, setDataArray] = useState([]);
   let newArray = []
-
 
   useEffect(() => {
     async function prepare() {
@@ -107,15 +109,18 @@ export default function App() {
       if(newArray.length==0){
         //console.log("waiting...")
         setDataStatus("Waiting for 5 seconds to collect data...")
+        setcolorDataStatus("red")
         await timeout(5000)
       }
       if(poses.length>0 && newArray.length<numFrames){
         //console.log("Collecting Data")
         newArray.push(poses[0].keypoints3D)
         setDataStatus("Collecting Data")
+        setcolorDataStatus("#ffcc00")
       }else if(newArray.length==numFrames){
         setCurrentPoseJson(newArray);
         setDataStatus("Name pose and push button to send data")
+        setcolorDataStatus("green")
       }
       tf.dispose([image]);
 
@@ -218,7 +223,8 @@ export default function App() {
     //console.log("sending data loop")
     sendPoseData();
     newArray = []
-    setDataStatus("sent the data")
+    setDataStatus("sent the data");
+    setcolorDataStatus("green");
   }
   function timeout(delay) {
     return new Promise( res => setTimeout(res, delay) );
@@ -319,6 +325,7 @@ export default function App() {
     return (
       // Note that you don't need to specify `cameraTextureWidth` and
       // `cameraTextureHeight` prop in `TensorCamera` below.
+      <KeyboardAvoidingView style={{flex: 1, enalbed: true}}>
       <View
         style={
           isPortrait() ? styles.containerPortrait : styles.containerLandscape
@@ -341,18 +348,24 @@ export default function App() {
           style={styles.switch}
           onPress={cameraTypeHandler}
         >
-        <Text>Switch</Text>
+        <Text style={{color:"white"}}>Switch</Text>
         </TouchableOpacity>
         {renderPose()}
         {renderFps()}
+        
         <View style={styles.row}>
-        <View><TextInput
+        <View>
+      <TextInput
+            style={styles.input}
+            onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
+            value={currentPoseName}nput
             style={styles.input}
             onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
             value={currentPoseName}
             placeholder="Type in pose name to be trained"
             keyboardType="default"
-          /></View>
+          />
+          </View>
           <View><Button
           style={styles.sendButton}
           title="Send"
@@ -360,12 +373,14 @@ export default function App() {
           onPress={() => {sendDataLoop();}}
           /></View>        
         </View>
-        
-        <Text style={styles.dataStatus}>{dataStatus}</Text>
+        <Text style={styles.dataStatus} style={{backgroundColor: "black", color: colordataStatus, fontSize: 35, margin: 0, padding: 0}}>{dataStatus}</Text>
       </View>
+      </KeyboardAvoidingView>
     );
   }
 }
+
+
 
 const styles = StyleSheet.create({
   containerPortrait: {
@@ -382,6 +397,9 @@ const styles = StyleSheet.create({
     width: CAM_PREVIEW_HEIGHT,
     height: CAM_PREVIEW_WIDTH,
     marginLeft: Dimensions.get('window').height / 2 - CAM_PREVIEW_HEIGHT / 2,
+  },
+  keyboard: {
+    flex: 1,
   },
   loadingMsg: {
     position: 'absolute',
@@ -417,24 +435,30 @@ const styles = StyleSheet.create({
   },
   switch: {
     position: 'absolute',
-    top: 50,
+    bottom: 20,
     left: 10,
     width: 80,
+    backgroundColor: '#f194ff',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, .7)',
     borderRadius: 2,
     padding: 8,
     zIndex: 20,
   },
   dataStatus: {
-    fontSize: 30,
+    fontSize: 50,
+    margin: 0,
+    padding: 0,
   }, 
   input: {
-    height: 30,
+    height: 40,
+    width: 200,
     borderRadius: 2,
     padding: 8,
+    marginTop: 5,
     borderWidth: 2,
     borderColor: 'grey',
+    position: 'relative',
+    zIndex: 100,
   },
   row: {
     flexDirection: 'row',
@@ -443,6 +467,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   sendButton:{
-    flex:2
+    flex: 2,
   }
 });
