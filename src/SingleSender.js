@@ -100,12 +100,17 @@ export default function SingleSender(
         const loop = async () => {
             // Get the tensor and run pose detection.
             const image = images.next().value;
-            const estimationConfig = { flipHorizontal: true };
+            const estimationConfig = {
+                flipHorizontal: true
+            };
             const timestamp = performance.now();
-            const poses = await detector.estimatePoses(image, estimationConfig, timestamp);
+            try {
+                var poses = await detector.estimatePoses(image, estimationConfig, timestamp);
+            } catch { }
             const latency = performance.now() - timestamp;
             setFps(Math.floor(1000 / latency));
             setPoses(poses);
+
             tf.dispose([image]);
 
             // Render camera preview manually when autorender=false.
@@ -114,7 +119,7 @@ export default function SingleSender(
                 gl.endFrameEXP();
             }
 
-            requestAnimationFrame(loop);
+            requestAnimationFrame(loop); //allows for a UI friendly render loop
         };
 
         loop();
