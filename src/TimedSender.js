@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity, Button,TextInput, KeyboardAvoidingView} from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Platform, TouchableOpacity, Button, TextInput, KeyboardAvoidingView } from 'react-native';
 
 import { Camera } from 'expo-camera';
 import * as tf from '@tensorflow/tfjs';
@@ -22,7 +22,7 @@ const IS_IOS = Platform.OS === 'ios';
 // devices.
 //
 // This might not cover all cases.
-const CAM_PREVIEW_WIDTH = Dimensions.get('window').width/1.1;
+const CAM_PREVIEW_WIDTH = Dimensions.get('window').width / 1.1;
 const CAM_PREVIEW_HEIGHT = CAM_PREVIEW_WIDTH / (IS_IOS ? 9 / 16 : 3 / 4);
 
 // The score threshold for pose detection results.
@@ -40,7 +40,14 @@ const OUTPUT_TENSOR_HEIGHT = OUTPUT_TENSOR_WIDTH / (IS_IOS ? 9 / 16 : 3 / 4);
 const AUTO_RENDER = false;
 
 
-export default function App() {
+export default function TimedSender(
+  {
+    route
+  }
+) {
+
+  const { training_server } = route.params; //takes in the training web server URL
+
   const cameraRef = useRef(null);
   const [currentPoseName, setCurrentPoseName] = useState('');
   const [tfReady, setTfReady] = useState(false);
@@ -98,7 +105,7 @@ export default function App() {
     const loop = async () => {
       // Get the tensor and run pose detection.
       const image = images.next().value;
-      const estimationConfig = {flipHorizontal: true};
+      const estimationConfig = { flipHorizontal: true };
       const timestamp = performance.now();
       const poses = await detector.estimatePoses(image, estimationConfig, timestamp);
       const latency = performance.now() - timestamp;
@@ -106,18 +113,18 @@ export default function App() {
       setFps(Math.floor(1000 / latency));
       setPoses(poses);
 
-      if(newArray.length==0){
+      if (newArray.length == 0) {
         //console.log("waiting...")
         setDataStatus("Waiting for 5 seconds to collect data...")
         setcolorDataStatus("red")
         await timeout(5000)
       }
-      if(poses.length>0 && newArray.length<numFrames){
+      if (poses.length > 0 && newArray.length < numFrames) {
         //console.log("Collecting Data")
         newArray.push(poses[0].keypoints3D)
         setDataStatus("Collecting Data")
         setcolorDataStatus("#ffcc00")
-      }else if(newArray.length==numFrames){
+      } else if (newArray.length == numFrames) {
         setCurrentPoseJson(newArray);
         setDataStatus("Name pose and push button to send data")
         setcolorDataStatus("green")
@@ -150,21 +157,22 @@ export default function App() {
           let cy =
             (y / getOutputTensorHeight()) *
             (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
-          if(k.score>MIN_KEYPOINT_SCORE){
-          return (
-            <Circle
-              key={`skeletonkp_${k.name}`}
-              cx={cx}
-              cy={cy}
-              r='4'
-              strokeWidth='2'
-              fill='#8B008B'
-              stroke='white'
-            />
-          );}
+          if (k.score > MIN_KEYPOINT_SCORE) {
+            return (
+              <Circle
+                key={`skeletonkp_${k.name}`}
+                cx={cx}
+                cy={cy}
+                r='4'
+                strokeWidth='2'
+                fill='#8B008B'
+                stroke='white'
+              />
+            );
+          }
         });
 
-      const skeleton = poseDetection.util.getAdjacentPairs(poseDetection.SupportedModels.BlazePose).map(([i, j],index) => {
+      const skeleton = poseDetection.util.getAdjacentPairs(poseDetection.SupportedModels.BlazePose).map(([i, j], index) => {
         const keypoints = poses[0].keypoints;
         const kp1 = keypoints[i];
         const kp2 = keypoints[j];
@@ -174,28 +182,29 @@ export default function App() {
         const y2 = kp2.y
 
         const cx1 =
-            (x1 / getOutputTensorWidth()) *
-            (isPortrait() ? CAM_PREVIEW_WIDTH : CAM_PREVIEW_HEIGHT);
+          (x1 / getOutputTensorWidth()) *
+          (isPortrait() ? CAM_PREVIEW_WIDTH : CAM_PREVIEW_HEIGHT);
         const cy1 =
-            (y1 / getOutputTensorHeight()) *
-            (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
+          (y1 / getOutputTensorHeight()) *
+          (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
         const cx2 =
-            (x2 / getOutputTensorWidth()) *
-            (isPortrait() ? CAM_PREVIEW_WIDTH : CAM_PREVIEW_HEIGHT);
+          (x2 / getOutputTensorWidth()) *
+          (isPortrait() ? CAM_PREVIEW_WIDTH : CAM_PREVIEW_HEIGHT);
         const cy2 =
-            (y2 / getOutputTensorHeight()) *
-            (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
-        if(kp1.score>MIN_KEYPOINT_SCORE){
-        return (<Line
-          key={`skeletonls_${index}`}
-          x1={cx1}
-          y1={cy1}
-          x2={cx2}
-          y2={cy2}
-          r='4'
-          stroke='red'
-          strokeWidth='1'
-        />);}
+          (y2 / getOutputTensorHeight()) *
+          (isPortrait() ? CAM_PREVIEW_HEIGHT : CAM_PREVIEW_WIDTH);
+        if (kp1.score > MIN_KEYPOINT_SCORE) {
+          return (<Line
+            key={`skeletonls_${index}`}
+            x1={cx1}
+            y1={cy1}
+            x2={cx2}
+            y2={cy2}
+            r='4'
+            stroke='red'
+            strokeWidth='1'
+          />);
+        }
       });
 
       return <Svg style={styles.svg}>{skeleton}{keypoints}</Svg>;
@@ -218,7 +227,7 @@ export default function App() {
     return poseObjStr;
   };
 
-  const sendDataLoop = async ()=>{
+  const sendDataLoop = async () => {
     //setCurrentPoseJson();
     //console.log("sending data loop")
     sendPoseData();
@@ -227,12 +236,12 @@ export default function App() {
     setcolorDataStatus("green");
   }
   function timeout(delay) {
-    return new Promise( res => setTimeout(res, delay) );
-}
+    return new Promise(res => setTimeout(res, delay));
+  }
 
   const sendPoseData = async () => {
     const poseData = getCurrentPoseData();
-    
+
     //using FormData to create body data for the request
     var formData = new FormData();
     formData.append('secret', 'uindy');
@@ -246,9 +255,9 @@ export default function App() {
       },
       body: formData
     };
-    const response = await fetch('http://3.20.237.206/pose_handler.php', postData);
+    const response = await fetch(training_server, postData);
     const response_data = await JSON.stringify(response);
-    
+
   };
 
   const renderFps = () => {
@@ -315,9 +324,9 @@ export default function App() {
   } else {
 
     const cameraTypeHandler = () => {
-      if(cameraType === Camera.Constants.Type.back){
+      if (cameraType === Camera.Constants.Type.back) {
         setCameraType(Camera.Constants.Type.front);
-      }else{
+      } else {
         setCameraType(Camera.Constants.Type.back);
       }
     };
@@ -325,56 +334,52 @@ export default function App() {
     return (
       // Note that you don't need to specify `cameraTextureWidth` and
       // `cameraTextureHeight` prop in `TensorCamera` below.
-      <KeyboardAvoidingView style={{flex: 1, enalbed: true}}>
-      <View
-        style={
-          isPortrait() ? styles.containerPortrait : styles.containerLandscape
-        }
-      >
-        <TensorCamera
-          ref={cameraRef}
-          style={styles.camera}
-          type={cameraType}
-          autorender={AUTO_RENDER}
-          type={cameraType}
-          // tensor related props
-          resizeWidth={getOutputTensorWidth()}
-          resizeHeight={getOutputTensorHeight()}
-          resizeDepth={3}
-          rotation={getTextureRotationAngleInDegrees()}
-          onReady={handleCameraStream}
-        />
-        <TouchableOpacity
-          style={styles.switch}
-          onPress={cameraTypeHandler}
+      <KeyboardAvoidingView style={{ flex: 1, enalbed: true }}>
+        <View
+          style={
+            isPortrait() ? styles.containerPortrait : styles.containerLandscape
+          }
         >
-        <Text style={{color:"white"}}>Switch</Text>
-        </TouchableOpacity>
-        {renderPose()}
-        {renderFps()}
-        
-        <View style={styles.row}>
-        <View>
-      <TextInput
-            style={styles.input}
-            onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
-            value={currentPoseName}nput
-            style={styles.input}
-            onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
-            value={currentPoseName}
-            placeholder="Type in pose name to be trained"
-            keyboardType="default"
+          <TensorCamera
+            ref={cameraRef}
+            style={styles.camera}
+            type={cameraType}
+            autorender={AUTO_RENDER}
+            // tensor related props
+            resizeWidth={getOutputTensorWidth()}
+            resizeHeight={getOutputTensorHeight()}
+            resizeDepth={3}
+            rotation={getTextureRotationAngleInDegrees()}
+            onReady={handleCameraStream}
           />
+          <TouchableOpacity
+            style={styles.switch}
+            onPress={cameraTypeHandler}
+          >
+            <Text style={{ color: "white" }}>Switch</Text>
+          </TouchableOpacity>
+          {renderPose()}
+          {renderFps()}
+
+          <View style={styles.row}>
+            <View>
+              <TextInput
+                style={styles.input}
+                onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
+                value={currentPoseName}
+                placeholder="Type in pose name to be trained"
+                keyboardType="default"
+              />
+            </View>
+            <View><Button
+              style={styles.sendButton}
+              title="Send"
+              color="#f194ff"
+              onPress={() => { sendDataLoop(); }}
+            /></View>
           </View>
-          <View><Button
-          style={styles.sendButton}
-          title="Send"
-          color="#f194ff"
-          onPress={() => {sendDataLoop();}}
-          /></View>        
+          <Text style={{ backgroundColor: "black", color: colordataStatus, fontSize: 35, margin: 0, padding: 0 }}>{dataStatus}</Text>
         </View>
-        <Text style={styles.dataStatus} style={{backgroundColor: "black", color: colordataStatus, fontSize: 35, margin: 0, padding: 0}}>{dataStatus}</Text>
-      </View>
       </KeyboardAvoidingView>
     );
   }
@@ -448,7 +453,7 @@ const styles = StyleSheet.create({
     fontSize: 50,
     margin: 0,
     padding: 0,
-  }, 
+  },
   input: {
     height: 40,
     width: 200,
@@ -466,7 +471,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
-  sendButton:{
+  sendButton: {
     flex: 2,
   }
 });

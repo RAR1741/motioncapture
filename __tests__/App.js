@@ -1,10 +1,14 @@
-import 'react-native';
 import React from 'react';
-import App from '../App';
+import { View } from 'react-native';
+import PoseTrainer from '../src/PoseTrainer';
+import PoseTracker from "./PoseTracker";
 
-// Note: test renderer must be required after react-native.
-import renderer from 'react-test-renderer';
-
-it('renders correctly', () => {
-  renderer.create(<App />);
-});
+export default function App() {
+  return (
+    <View>
+      <PoseTrainer
+        training_server_url={'http://3.20.237.206/pose_handler.php'}
+      />
+    </View>
+  );
+}
