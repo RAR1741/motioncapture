@@ -365,8 +365,8 @@ export default function TimedSender(
             <View>
               <TextInput
                 style={styles.input}
-                onChangeText={currentPoseName => setCurrentPoseName(currentPoseName)}
-                value={currentPoseName}
+                onChangeText={currentPoseName => setCurrentPoseName(currentPoseName.split(' ').join('_'))}
+                value={currentPoseName.split(' ').join('_')}
                 placeholder="Type in pose name to be trained"
                 keyboardType="default"
               />
